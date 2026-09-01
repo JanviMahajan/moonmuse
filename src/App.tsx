@@ -28,6 +28,7 @@ import { OwnerDesignRequests } from "./components/OwnerDesignRequests";
 import { ProductDetails, ShopCatalogue } from "./components/ShopExperience";
 import { CartPage, CheckoutPage, OrderConfirmation } from "./components/CartCheckout";
 import { FrameTemplateCustomizer } from "./components/FrameTemplateCustomizer";
+import { AccountPage } from "./components/AccountPage";
 import {
   frameSizes,
   getPricing,
@@ -1163,6 +1164,7 @@ export default function App() {
               <Route path="/shop/:slug" element={<ProductDetails />} />
               <Route path="/templates/:slug/options" element={<FrameTemplateCustomizer />} />
               <Route path="/cart" element={<CartPage />} />
+              <Route path="/login" element={<AccountPage />} />
               <Route path="/checkout" element={<CheckoutPage />} />
               <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
               <Route path="/studio" element={<Navigate to="/shop" replace />} />

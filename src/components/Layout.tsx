@@ -1,4 +1,4 @@
-import { Heart, Instagram, Menu, ShoppingBag, X } from "lucide-react";
+import { Heart, Instagram, Menu, ShoppingBag, User, X } from "lucide-react";
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 
@@ -11,7 +11,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 md:px-10">
         <Link to="/" className="flex items-center gap-2 text-2xl font-semibold text-wine"><span className="grid h-9 w-9 place-items-center rounded-full bg-wine text-cream">☾</span><span className="font-serif">MoonMuse</span></Link>
         <nav className="hidden items-center gap-7 md:flex">{links.map(([name, path]) => <NavLink key={path} to={path} className={({ isActive }) => `text-sm ${isActive ? "font-semibold text-wine" : "text-ink/70 hover:text-wine"}`}>{name}</NavLink>)}</nav>
-        <div className="flex items-center gap-3"><Link to="/cart" aria-label="Bag" className="rounded-full border border-wine/15 p-2.5"><ShoppingBag size={18} /></Link><button className="md:hidden" onClick={() => setOpen(!open)}>{open ? <X /> : <Menu />}</button></div>
+        <div className="flex items-center gap-3"><Link to="/login" aria-label="Customer or owner login" className="rounded-full border border-wine/15 p-2.5"><User size={18} /></Link><Link to="/cart" aria-label="Bag" className="rounded-full border border-wine/15 p-2.5"><ShoppingBag size={18} /></Link><button className="md:hidden" onClick={() => setOpen(!open)}>{open ? <X /> : <Menu />}</button></div>
       </div>
       {open && <nav className="grid gap-4 border-t border-wine/10 px-6 py-5 md:hidden">{links.map(([name, path]) => <Link onClick={() => setOpen(false)} key={path} to={path}>{name}</Link>)}</nav>}
     </header>
