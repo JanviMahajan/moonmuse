@@ -29,6 +29,7 @@ import { ProductDetails, ShopCatalogue } from "./components/ShopExperience";
 import { CartPage, CheckoutPage, OrderConfirmation } from "./components/CartCheckout";
 import { FrameTemplateCustomizer } from "./components/FrameTemplateCustomizer";
 import { AccountPage } from "./components/AccountPage";
+import { ResetPasswordPage } from "./components/ResetPasswordPage";
 import {
   frameSizes,
   getPricing,
@@ -1153,6 +1154,7 @@ function Shop() {
 export default function App() {
   return (
     <Routes>
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/admin/*" element={<Admin />} />
       <Route
         path="*"
