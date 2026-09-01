@@ -2,6 +2,10 @@
 
 A responsive React/Vite storefront and customization experience for a handmade gifting studio.
 
+## Live website
+
+[Visit MoonMuse](https://moonmuse-beta.vercel.app)
+
 ## Run locally
 
 ```bash
