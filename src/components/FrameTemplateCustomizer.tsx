@@ -1,7 +1,7 @@
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Upload } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { addToCart, readProducts } from "../lib/commerce";
+import { addToCart, useShopProducts } from "../lib/commerce";
 import { frameColours, frameSizes, money } from "../lib/data";
 
 const slots = [
@@ -12,12 +12,13 @@ const slots = [
 const readFile=(file:File)=>new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=reject;reader.readAsDataURL(file)});
 
 export function FrameTemplateCustomizer() {
-  const {slug}=useParams(); const nav=useNavigate(); const product=readProducts().find((p)=>p.slug===slug&&p.category==="frame-templates");
+  const {slug}=useParams(); const nav=useNavigate(); const {products,loading}=useShopProducts(); const product=products.find((p)=>p.slug===slug&&p.category==="frame-templates");
   const [step,setStep]=useState(1); const [size,setSize]=useState("small"); const [colour,setColour]=useState("black"); const [photos,setPhotos]=useState<string[]>(Array(6).fill("")); const [names,setNames]=useState(""); const [date,setDate]=useState(""); const [quote,setQuote]=useState(""); const [preview,setPreview]=useState(""); const canvas=useRef<HTMLCanvasElement>(null);
   const frameSize=frameSizes.find((s)=>s.id===size)||frameSizes[0]; const border=frameColours.find((c)=>c.id===colour)?.colour||"#171417";
   const upload=async(index:number,event:ChangeEvent<HTMLInputElement>)=>{const file=event.target.files?.[0];if(!file)return;if(!["image/jpeg","image/png","image/webp"].includes(file.type)||file.size>10*1024*1024)return alert("Use a JPG, PNG or WebP under 10 MB.");const src=await readFile(file);setPhotos((old)=>old.map((item,i)=>i===index?src:item))};
   const generate=async()=>{const node=canvas.current;if(!node||!product)return;const context=node.getContext("2d")!;node.width=500;node.height=700;context.fillStyle="#F8F3EC";context.fillRect(0,0,500,700);const load=(src:string)=>new Promise<HTMLImageElement>((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=reject;image.src=src});try{const base=await load(product.images[0]);context.globalAlpha=.28;context.drawImage(base,0,0,500,700);context.globalAlpha=1;for(let i=0;i<slots.length;i++){const slot=slots[i];const x=slot.left*5,y=slot.top*7,w=slot.width*5,h=slot.height*7;context.save();context.translate(x+w/2,y+h/2);context.rotate(slot.rotation*Math.PI/180);context.fillStyle="#fff";context.fillRect(-w/2-5,-h/2-5,w+10,h+10);if(photos[i]){const image=await load(photos[i]);const scale=Math.max(w/image.width,h/image.height);const sw=w/scale,sh=h/scale;context.drawImage(image,(image.width-sw)/2,(image.height-sh)/2,sw,sh,-w/2,-h/2,w,h)}else{context.fillStyle="#eadfe4";context.fillRect(-w/2,-h/2,w,h)}context.restore()}context.textAlign="center";context.fillStyle="#4A1028";context.font="bold 28px Georgia";context.fillText(names||"Your names",250,625);context.font="18px Georgia";context.fillText(date,250,652);context.font="italic 17px Georgia";context.fillText(quote.slice(0,46),250,678);setPreview(node.toDataURL("image/png"));setStep(3)}catch{alert("The preview could not be generated. Please try again.")}};
   useEffect(()=>{if(step===3&&!preview)generate()},[step]);
+  if(loading)return <section className="section text-center"><h1 className="text-5xl">Loading template…</h1></section>;
   if(!product)return <section className="section text-center"><h1 className="text-5xl">Template unavailable.</h1></section>;
   const ready=photos.every(Boolean)&&names.trim()&&quote.trim(); const add=()=>{addToCart(product,{size:frameSize.name,frameColour:colour,templateVersion:"1"},preview);nav("/cart")};
   return <section className="section"><div className="mb-8 grid grid-cols-5 gap-2">{["Select Options","Add Photos","Personalize","Preview","Order"].map((label,i)=><div key={label}><span className={`block h-2 rounded-full ${i<=(step===1?0:step===2?2:3)?"bg-wine":"bg-wine/10"}`}/><small className="mt-2 hidden md:block">{label}</small></div>)}</div>
@@ -28,4 +29,3 @@ export function FrameTemplateCustomizer() {
   </section>;
 }
 function LiveArtwork({productImage,photos,names,date,quote,border}:{productImage:string;photos:string[];names:string;date:string;quote:string;border:string}) { return <aside className="grid place-items-center rounded-[2rem] bg-[#ded4c8] p-8"><div className="relative aspect-[5/7] w-full max-w-[350px] overflow-hidden bg-cream shadow-xl" style={{border:`14px solid ${border}`}}><img src={productImage} className="absolute inset-0 h-full w-full object-cover opacity-25" alt=""/>{slots.map((slot,i)=><div key={i} className="absolute overflow-hidden border-4 border-white bg-blush/20 shadow" style={{left:`${slot.left}%`,top:`${slot.top}%`,width:`${slot.width}%`,height:`${slot.height}%`,transform:`rotate(${slot.rotation}deg)`}}>{photos[i]&&<img src={photos[i]} className="h-full w-full object-cover" alt=""/>}</div>)}<div className="absolute inset-x-4 bottom-2 text-center text-wine"><b className="font-serif text-xl">{names||"Your names"}</b><small className="block">{date}</small><p className="truncate font-serif italic">{quote}</p></div></div></aside>}
-
