@@ -1,11 +1,12 @@
 export type ShopCategory = "ashtrays" | "totes" | "keychains" | "paintings" | "frames" | "frame-templates";
+export type ProductMedia = { id: string; type: "image" | "video" | "external_video"; url: string; thumbnailUrl?: string; posterUrl?: string; alt: string; caption: string; isPrimary: boolean };
 export type ShopProduct = {
   id: string; slug: string; title: string; category: ShopCategory; price: number;
   availability: "In Stock" | "Made to Order" | "Sold Out" | "Hidden";
   badge: "Handmade" | "Made to Order" | "Editable Template";
   description: string; story: string; materials: string; dimensions: string;
   care: string; processingTime: string; images: string[]; featured: boolean;
-  stock: number | null; createdAt: string; photoSlots?: number;
+  stock: number | null; createdAt: string; photoSlots?: number; media?: ProductMedia[];
 };
 export type CartItem = { id: string; productId: string; quantity: number; unitPrice: number; title: string; image: string; options?: Record<string,string>; preview?: string };
 export const productStoreKey = "moonmuse-shop-products";
@@ -23,7 +24,7 @@ export async function fetchPublishedProducts(): Promise<ShopProduct[]> {
   if (!supabase) return seedProducts;
   const client = supabase;
   const { data, error } = await client.from("products")
-    .select("id,slug,name,description,price_inr,sale_price_inr,availability,product_story,materials,dimensions,care_instructions,processing_time,is_featured,created_at,categories(slug),product_images(storage_path,display_order)")
+    .select("id,slug,name,description,price_inr,sale_price_inr,availability,product_story,materials,dimensions,care_instructions,processing_time,is_featured,created_at,categories(slug),product_media(id,media_type,storage_path,external_url,thumbnail_path,poster_path,alt_text,caption,display_order,is_primary)")
     .eq("is_active", true)
     .order("created_at", { ascending: false });
   if (error) {
@@ -32,10 +33,12 @@ export async function fetchPublishedProducts(): Promise<ShopProduct[]> {
   }
   const databaseProducts = (data || []).map((row: any): ShopProduct | null => {
     const category = row.categories?.slug as ShopCategory | undefined;
-    const images = (row.product_images || [])
+    const media: ProductMedia[] = (row.product_media || [])
       .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
-      .map((image: any) => client.storage.from("products").getPublicUrl(image.storage_path).data.publicUrl);
-    if (!category || !images.length) return null;
+      .map((item: any) => ({ id: item.id, type: item.media_type, url: item.external_url || client.storage.from("products").getPublicUrl(item.storage_path).data.publicUrl, thumbnailUrl: item.thumbnail_path ? client.storage.from("products").getPublicUrl(item.thumbnail_path).data.publicUrl : undefined, posterUrl: item.poster_path ? client.storage.from("products").getPublicUrl(item.poster_path).data.publicUrl : undefined, alt: item.alt_text || row.name, caption: item.caption || "", isPrimary: item.is_primary }));
+    const orderedMedia = [...media].sort((a,b) => Number(b.isPrimary)-Number(a.isPrimary));
+    const images = orderedMedia.filter((item) => item.type === "image").map((item) => item.url);
+    if (!category || !orderedMedia.length || !images.length) return null;
     return {
       id: row.id,
       slug: row.slug,
@@ -51,6 +54,7 @@ export async function fetchPublishedProducts(): Promise<ShopProduct[]> {
       care: row.care_instructions || "Handle with care.",
       processingTime: row.processing_time || "5–7 working days",
       images,
+      media: orderedMedia,
       featured: Boolean(row.is_featured),
       stock: null,
       createdAt: row.created_at,
