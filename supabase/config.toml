@@ -1,0 +1,17 @@
+[functions.create-order]
+verify_jwt = false
+
+[functions.track-order]
+verify_jwt = false
+
+[functions.submit-design-request]
+verify_jwt = false
+
+[functions.resend-webhook]
+verify_jwt = false
+
+[functions.admin-email]
+verify_jwt = true
+
+[functions.admin-order]
+verify_jwt = true

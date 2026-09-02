@@ -28,8 +28,8 @@ import { OwnerDesignRequests } from "./components/OwnerDesignRequests";
 import { ProductDetails, ShopCatalogue } from "./components/ShopExperience";
 import { CartPage, CheckoutPage, OrderConfirmation } from "./components/CartCheckout";
 import { FrameTemplateCustomizer } from "./components/FrameTemplateCustomizer";
-import { AccountPage } from "./components/AccountPage";
 import { ResetPasswordPage } from "./components/ResetPasswordPage";
+import { TrackOrderPage } from "./components/TrackOrderPage";
 import {
   frameSizes,
   getPricing,
@@ -1154,7 +1154,8 @@ function Shop() {
 export default function App() {
   return (
     <Routes>
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/reset-password" element={<Navigate to="/admin/reset-password" replace />} />
+      <Route path="/admin/reset-password" element={<ResetPasswordPage />} />
       <Route path="/admin/*" element={<Admin />} />
       <Route
         path="*"
@@ -1166,7 +1167,11 @@ export default function App() {
               <Route path="/shop/:slug" element={<ProductDetails />} />
               <Route path="/templates/:slug/options" element={<FrameTemplateCustomizer />} />
               <Route path="/cart" element={<CartPage />} />
-              <Route path="/login" element={<AccountPage />} />
+              <Route path="/login" element={<Navigate to="/" replace />} />
+              <Route path="/signup" element={<Navigate to="/" replace />} />
+              <Route path="/register" element={<Navigate to="/" replace />} />
+              <Route path="/account" element={<Navigate to="/" replace />} />
+              <Route path="/profile" element={<Navigate to="/" replace />} />
               <Route path="/checkout" element={<CheckoutPage />} />
               <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
               <Route path="/studio" element={<Navigate to="/shop" replace />} />
@@ -1196,7 +1201,8 @@ export default function App() {
               <Route path="/order" element={<Order />} />
               <Route path="/gallery" element={<Gallery />} />
               <Route path="/about" element={<About />} />
-              <Route path="/status" element={<Status />} />
+              <Route path="/track-order" element={<TrackOrderPage />} />
+              <Route path="/status" element={<TrackOrderPage />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </Layout>

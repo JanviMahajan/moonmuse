@@ -52,7 +52,7 @@ export function ResetPasswordPage() {
         <h1 className="text-5xl">{complete ? "Password updated." : "Create a new password."}</h1>
 
         {complete ? (
-          <Link className="btn mt-7 w-full" to="/admin">Continue to Owner Login</Link>
+          <Link className="btn mt-7 w-full" to="/admin/login">Continue to Owner Login</Link>
         ) : ready ? (
           <form onSubmit={submit} className="mt-7">
             <label className="block">
@@ -68,7 +68,7 @@ export function ResetPasswordPage() {
         ) : null}
 
         {message && <p className="mt-5 rounded-2xl bg-blush/20 p-4 text-sm">{message}</p>}
-        {!ready && !complete && <Link className="mt-5 block text-center text-sm underline" to="/admin">Return to Owner Login</Link>}
+        {!ready && !complete && <Link className="mt-5 block text-center text-sm underline" to="/admin/login">Return to Owner Login</Link>}
       </div>
     </section>
   );

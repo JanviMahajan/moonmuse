@@ -1,11 +1,7 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
-const escapeHtml = (value: unknown) => String(value ?? "").replace(/[&<>'"]/g, (char) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "'":"&#39;", '"':"&quot;" })[char]!);
+import { adminClient } from "../_shared/auth.ts";
+import { escapeHtml, recordAndSend } from "../_shared/email.ts";
+import { corsHeaders as cors, json as reply, safeError } from "../_shared/http.ts";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -18,7 +14,8 @@ Deno.serve(async (request) => {
     if (!/^\S+@\S+\.\S+$/.test(email)) return reply({ error: "Invalid email" }, 400);
     const product = String(form.get("product"));
     if (!["frame", "tote", "wallpaper"].includes(product)) return reply({ error: "Invalid product" }, 400);
-    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const supabase = adminClient();
+    await enforceRateLimit(supabase, request, "submit-design-request", 5, 60);
     let orderNumber = "";
     let created: { id: string; order_number: string } | null = null;
     for (let attempt = 0; attempt < 5 && !created; attempt++) {
@@ -54,21 +51,19 @@ Deno.serve(async (request) => {
       if (error) throw error;
     }
     await supabase.from("design_request_history").insert({ request_id: created.id, status: "New Request", customer_message: "Your design request has reached Janvi's studio." });
-    const resendKey = Deno.env.get("RESEND_API_KEY");
-    const ownerEmail = Deno.env.get("MOONMUSE_OWNER_EMAIL");
-    const siteUrl = Deno.env.get("SITE_URL") || "http://127.0.0.1:5173";
-    const from = Deno.env.get("MOONMUSE_FROM_EMAIL") || "MoonMuse <orders@moonmuse.in>";
-    const send = async (to: string, subject: string, html: string) => {
-      if (!resendKey) return;
-      const response = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ from, to: [to], subject, html }) });
-      if (!response.ok) console.error("Resend error", await response.text());
-    };
+    const ownerEmail = Deno.env.get("OWNER_NOTIFICATION_EMAIL") || "";
+    const siteUrl = (Deno.env.get("PUBLIC_SITE_URL") || "").replace(/\/$/, "");
     const name = escapeHtml(form.get("fullName"));
-    if (ownerEmail) await send(ownerEmail, `New MoonMuse Design Request — ${orderNumber}`, `<h2>New design request ${orderNumber}</h2><p><b>Customer:</b> ${name} (${escapeHtml(email)})</p><p><b>WhatsApp:</b> ${escapeHtml(form.get("whatsapp"))}</p><p><b>Product:</b> ${escapeHtml(product)} · ${escapeHtml(form.get("selectedOption"))}</p><p><b>Occasion:</b> ${escapeHtml(form.get("occasion"))}</p><p><b>Message:</b> ${escapeHtml(form.get("message"))}</p><p><b>Colours:</b> ${escapeHtml(form.get("colours"))}</p><p><b>Instructions:</b> ${escapeHtml(form.get("instructions"))}</p><p><a href="${siteUrl}/admin/orders/${orderNumber}">Open request securely</a></p>`);
-    await send(email, "MoonMuse received your design request ✦", `<p>Hi ${name},</p><p>Your MoonMuse design request has been received. Janvi will personally create your design and send you a preview by email.</p><p><b>Order ID:</b> ${orderNumber}<br><b>Product:</b> ${escapeHtml(product)}<br><b>Options:</b> ${escapeHtml(form.get("selectedOption"))}<br><b>Status:</b> New Request</p><p><a href="${siteUrl}/status">Track your order</a></p>`);
-    return reply({ orderId: orderNumber });
+    const [ownerResult, customerResult] = await Promise.all([
+      recordAndSend(supabase, { emailType: "Owner order notification", recipient: ownerEmail, subject: `New MoonMuse Design Request — ${orderNumber}`, html: `<h2>New design request ${orderNumber}</h2><p><b>Customer:</b> ${name} (${escapeHtml(email)})</p><p><b>WhatsApp:</b> ${escapeHtml(form.get("whatsapp"))}</p><p><b>Product:</b> ${escapeHtml(product)} · ${escapeHtml(form.get("selectedOption"))}</p><p><b>Occasion:</b> ${escapeHtml(form.get("occasion"))}</p><p><b>Message:</b> ${escapeHtml(form.get("message"))}</p><p><b>Colours:</b> ${escapeHtml(form.get("colours"))}</p><p><b>Instructions:</b> ${escapeHtml(form.get("instructions"))}</p><p><a href="${siteUrl}/admin">Open request securely</a></p>` }),
+      recordAndSend(supabase, { emailType: "Customer order confirmation", recipient: email, subject: "MoonMuse received your design request ✦", html: `<p>Hi ${name},</p><p>Your MoonMuse design request has been received. Janvi will personally create your design and send you a preview for approval.</p><p><b>Order ID:</b> ${orderNumber}<br><b>Product:</b> ${escapeHtml(product)}<br><b>Options:</b> ${escapeHtml(form.get("selectedOption"))}<br><b>Status:</b> New Request</p>` }),
+    ]);
+    if (!ownerResult.ok || !customerResult.ok) await supabase.from("admin_notifications").insert({ kind: "email_failed", title: `Email warning for ${orderNumber}`, body: "A design-request email failed. Review email diagnostics." });
+    return reply({ orderId: orderNumber, emailStatus: { owner: ownerResult.ok ? "sent" : "failed", customer: customerResult.ok ? "sent" : "failed" } });
   } catch (error) {
-    console.error(error);
-    return reply({ error: error instanceof Error ? error.message : "Submission failed" }, 500);
+    const message = safeError(error);
+    console.error("submit-design-request failed", { message });
+    if (message === "rate_limit_exceeded") return reply({ error: "Too many requests. Please wait before trying again." }, 429);
+    return reply({ error: "Your request could not be submitted. Please try again." }, 500);
   }
 });
