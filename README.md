@@ -36,6 +36,7 @@ The public catalogue/editor can use seeded content locally. Guest checkout, veri
 
 ```env
 RESEND_API_KEY=
+WEB3FORMS_ACCESS_KEY=
 OWNER_NOTIFICATION_EMAIL=
 OWNER_WHATSAPP=
 EMAIL_FROM=
@@ -43,7 +44,7 @@ PUBLIC_SITE_URL=https://moonmuse-beta.vercel.app
 RESEND_WEBHOOK_SECRET=
 ```
 
-`EMAIL_FROM` must use a sender/domain authorized in Resend. Never expose `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, or webhook secrets through a `VITE_` variable.
+`EMAIL_FROM` must use a sender/domain authorized in Resend. Owner order notifications use the server-only `WEB3FORMS_ACCESS_KEY`; customer emails continue through Resend. Never expose `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `WEB3FORMS_ACCESS_KEY`, or webhook secrets through a `VITE_` variable.
 
 5. Deploy `create-order`, `track-order`, `admin-email`, `admin-order`, `submit-design-request`, and `resend-webhook` from `supabase/functions`.
 6. In Resend, point the webhook to `https://<project-ref>.supabase.co/functions/v1/resend-webhook`, subscribe to delivered/bounced/complained/failed events, and copy its signing secret into `RESEND_WEBHOOK_SECRET`.

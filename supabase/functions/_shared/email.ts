@@ -9,13 +9,18 @@ const escapeHtml = (value: unknown) => String(value ?? "")
 export { escapeHtml };
 
 function emailConfig() {
-  const apiKey = Deno.env.get("RESEND_API_KEY");
-  const from = Deno.env.get("EMAIL_FROM");
-  const ownerEmail = Deno.env.get("OWNER_NOTIFICATION_EMAIL");
-  const siteUrl = Deno.env.get("PUBLIC_SITE_URL");
+  const apiKey = Deno.env.get("RESEND_API_KEY")?.trim();
+  const from = Deno.env.get("EMAIL_FROM")?.trim();
+  const ownerEmail = Deno.env.get("OWNER_NOTIFICATION_EMAIL")?.trim();
+  const siteUrl = Deno.env.get("PUBLIC_SITE_URL")?.trim();
   const missing = [!apiKey && "RESEND_API_KEY", !from && "EMAIL_FROM", !ownerEmail && "OWNER_NOTIFICATION_EMAIL", !siteUrl && "PUBLIC_SITE_URL"].filter(Boolean);
   if (missing.length) return { ok: false as const, missing: missing as string[] };
   return { ok: true as const, apiKey: apiKey!, from: from!, ownerEmail: ownerEmail!, siteUrl: siteUrl!.replace(/\/$/, "") };
+}
+
+export function getOwnerNotificationEmail() {
+  const config = emailConfig();
+  return config.ok ? config.ownerEmail : null;
 }
 
 export function getEmailConfigStatus() {
@@ -33,12 +38,13 @@ export function getEmailConfigStatus() {
 export async function sendEmail(input: { to: string; subject: string; html: string }): Promise<EmailResult> {
   const config = emailConfig();
   if (!config.ok) return { ok: false, code: "missing_configuration", safeMessage: `Email service is missing: ${config.missing.join(", ")}`, temporary: false };
-  if (!/^\S+@\S+\.\S+$/.test(input.to)) return { ok: false, code: "invalid_recipient", safeMessage: "The recipient email address is invalid.", temporary: false };
+  const recipient = input.to.trim();
+  if (!/^\S+@\S+\.\S+$/.test(recipient)) return { ok: false, code: "invalid_recipient", safeMessage: "The recipient email address is invalid.", temporary: false };
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${config.apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: config.from, to: [input.to], subject: input.subject, html: input.html }),
+      body: JSON.stringify({ from: config.from, to: [recipient], subject: input.subject, html: input.html }),
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -51,7 +57,7 @@ export async function sendEmail(input: { to: string; subject: string; html: stri
       return { ok: false, code, safeMessage, temporary: response.status === 429 || response.status >= 500 };
     }
     if (!body?.id) return { ok: false, code: "missing_provider_id", safeMessage: "Email provider did not return a message ID.", temporary: true };
-    console.info("Resend accepted email", { providerMessageId: body.id, recipientDomain: input.to.split("@")[1] });
+    console.info("Resend accepted email", { providerMessageId: body.id, recipientDomain: recipient.split("@")[1] });
     return { ok: true, providerMessageId: String(body.id) };
   } catch (error) {
     console.error("Resend network failure", { message: error instanceof Error ? error.message : "unknown" });
@@ -78,4 +84,3 @@ export async function recordAndSend(db: any, input: { orderId?: string; emailTyp
   }
   return { deliveryId, ...result };
 }
-

@@ -1,5 +1,6 @@
 import { adminClient } from "../_shared/auth.ts";
 import { escapeHtml, recordAndSend } from "../_shared/email.ts";
+import { recordAndSendOwnerNotification } from "../_shared/web3forms.ts";
 import { corsHeaders, json, safeError } from "../_shared/http.ts";
 import { enforceRateLimit } from "../_shared/rate-limit.ts";
 
@@ -73,15 +74,34 @@ Deno.serve(async (request) => {
     await db.from("admin_notifications").insert({ kind: "new_order", title: `New order ${orderNumber}`, body: `${customer.fullName} placed a new order request.`, related_order_id: order.id });
 
     const siteUrl = (Deno.env.get("PUBLIC_SITE_URL") || "").replace(/\/$/, "");
-    const ownerEmail = Deno.env.get("OWNER_NOTIFICATION_EMAIL") || "";
+    const ownerEmail = (Deno.env.get("OWNER_NOTIFICATION_EMAIL") || "").trim();
     const ownerWhatsApp = (Deno.env.get("OWNER_WHATSAPP") || "").replace(/\D/g, "");
     const itemHtml = items.map((item) => `<li>${escapeHtml(item.title)} × ${item.quantity} — ₹${item.unitPrice * item.quantity}${Object.keys(item.options || {}).length ? `<br><small>${escapeHtml(JSON.stringify(item.options))}</small>` : ""}</li>`).join("");
-    const ownerHtml = `<h2>New MoonMuse order ${escapeHtml(orderNumber)}</h2><p><b>Customer:</b> ${escapeHtml(customer.fullName)} (${escapeHtml(customer.email)})</p><p><b>WhatsApp:</b> ${escapeHtml(customer.whatsapp)}</p><ul>${itemHtml}</ul><p><b>Subtotal:</b> ₹${subtotal}<br><b>Shipping:</b> To be confirmed<br><b>Order date:</b> ${escapeHtml(now)}</p><p><a href="${siteUrl}/admin/orders/${order.id}">Open Order in Dashboard</a></p>`;
     const customerHtml = `<p>Hi ${escapeHtml(customer.fullName)},</p><p>Your MoonMuse order request has been received. Janvi will contact you to confirm the design, delivery charge and payment.</p><p><b>Order ID:</b> ${escapeHtml(orderNumber)}</p><ul>${itemHtml}</ul><p><b>Subtotal:</b> ₹${subtotal}<br><b>Shipping:</b> To be confirmed<br><b>Payment:</b> Pending confirmation</p><p><a href="${siteUrl}/track-order?token=${trackingToken}">Secure Track Order</a>${ownerWhatsApp ? ` &nbsp; <a href="https://wa.me/${ownerWhatsApp}">Message Janvi on WhatsApp</a>` : ""}</p>`;
 
+    const products = items.map((item) => `${item.title} × ${item.quantity}`).join("; ");
+    const selectedOptions = items.map((item) => `${item.title}: ${Object.keys(item.options || {}).length ? JSON.stringify(item.options) : "None"}`).join("\n");
+    const adminOrderLink = `${siteUrl}/admin/orders/${order.id}`;
+
     const [ownerResult, customerResult] = await Promise.all([
-      recordAndSend(db, { orderId: order.id, emailType: "Owner order notification", recipient: ownerEmail, subject: `New MoonMuse Order — ${orderNumber}`, html: ownerHtml }),
-      recordAndSend(db, { orderId: order.id, emailType: "Customer order confirmation", recipient: String(customer.email), subject: `MoonMuse received your order ✦ ${orderNumber}`, html: customerHtml }),
+      recordAndSendOwnerNotification(db, {
+        orderId: order.id,
+        recipient: ownerEmail,
+        fields: {
+          subject: `New MoonMuse Order ✦ ${orderNumber}`,
+          "Order ID": orderNumber,
+          "Customer name": customer.fullName,
+          "Customer email": String(customer.email || "Not provided"),
+          "WhatsApp number": customer.whatsapp,
+          Product: products,
+          "Selected options": selectedOptions,
+          "Product subtotal": `₹${subtotal}`,
+          "Order date": now,
+          "Admin order link": adminOrderLink,
+          message: `A new MoonMuse order was saved. Open it in the dashboard: ${adminOrderLink}`,
+        },
+      }),
+      recordAndSend(db, { orderId: order.id, emailType: "Customer order confirmation", recipient: String(customer.email).trim(), subject: `MoonMuse received your order ✦ ${orderNumber}`, html: customerHtml }),
     ]);
     if (!ownerResult.ok || !customerResult.ok) await db.from("admin_notifications").insert({ kind: "email_failed", title: `Email warning for ${orderNumber}`, body: "One or more order emails failed. Open the order to retry.", related_order_id: order.id });
 
