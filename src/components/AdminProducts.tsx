@@ -17,6 +17,7 @@ import { money } from "../lib/data";
 import { supabase } from "../lib/supabase";
 
 type Category = { id: string; name: string; slug: string };
+type Collection = { id: string; name: string; slug: string };
 type Media = {
   id: string;
   media_type: "image" | "video" | "external_video";
@@ -271,6 +272,9 @@ export function DatabaseProductEditor({ id }: { id?: string }) {
   const nav = useNavigate();
   const [form, setForm] = useState(emptyForm);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [selectedCollections, setSelectedCollections] = useState<string[]>([]);
+  const [personal, setPersonal] = useState({isPersonalised:false,photoRequired:false,instructionsRequired:false,startingPrice:false,maxPeople:"",maxPets:"",photosRequired:"",sizes:"",variants:"",instructions:""});
   const [media, setMedia] = useState<Media[]>([]);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [busy, setBusy] = useState(false);
@@ -295,6 +299,7 @@ export function DatabaseProductEditor({ id }: { id?: string }) {
           categoryId: current.categoryId || values[0]?.id || "",
         }));
       });
+    void supabase.from("collections").select("id,name,slug").eq("is_active",true).order("display_order").then(({data})=>setCollections((data as Collection[])||[]));
     if (id)
       void supabase
         .from("products")
@@ -322,6 +327,8 @@ export function DatabaseProductEditor({ id }: { id?: string }) {
               (a: Media, b: Media) => a.display_order - b.display_order,
             ),
           );
+          void supabase!.from("product_collections").select("collection_id").eq("product_id",id).then(({data:links})=>setSelectedCollections((links||[]).map(link=>link.collection_id)));
+          void supabase!.from("product_personalisation_options").select("*").eq("product_id",id).maybeSingle().then(({data:option})=>{if(option)setPersonal({isPersonalised:option.is_personalised,photoRequired:option.customer_photo_required,instructionsRequired:option.customer_instructions_required,startingPrice:option.starting_price,maxPeople:String(option.max_people??""),maxPets:String(option.max_pets??""),photosRequired:String(option.photos_required??""),sizes:(option.available_sizes||[]).join(", "),variants:(option.available_variants||[]).join(", "),instructions:option.instructions||""})});
         });
   }, [id]);
   const set = (key: keyof typeof emptyForm, value: string | boolean) =>
@@ -470,6 +477,9 @@ export function DatabaseProductEditor({ id }: { id?: string }) {
     }
     const productId = result.data.id;
     try {
+      await supabase.from("product_collections").delete().eq("product_id",productId);
+      if(selectedCollections.length){const{error:collectionError}=await supabase.from("product_collections").insert(selectedCollections.map(collection_id=>({product_id:productId,collection_id})));if(collectionError)throw collectionError}
+      const{error:optionError}=await supabase.from("product_personalisation_options").upsert({product_id:productId,is_personalised:personal.isPersonalised,customer_photo_required:personal.photoRequired,customer_instructions_required:personal.instructionsRequired,starting_price:personal.startingPrice,max_people:Number(personal.maxPeople)||null,max_pets:Number(personal.maxPets)||null,photos_required:Number(personal.photosRequired)||null,available_sizes:personal.sizes.split(",").map(v=>v.trim()).filter(Boolean),available_variants:personal.variants.split(",").map(v=>v.trim()).filter(Boolean),instructions:personal.instructions.trim()||null,updated_at:new Date().toISOString()});if(optionError)throw optionError;
       if (media.length) {
         await supabase
           .from("product_media")
@@ -597,6 +607,8 @@ export function DatabaseProductEditor({ id }: { id?: string }) {
           />{" "}
           Featured
         </label>
+        <div className="md:col-span-2 rounded-2xl bg-cream p-5"><span className="label">Also show this product in</span><div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{collections.map(collection=><label className="flex items-center gap-2 text-sm" key={collection.id}><input type="checkbox" checked={selectedCollections.includes(collection.id)} onChange={event=>setSelectedCollections(current=>event.target.checked?[...current,collection.id]:current.filter(value=>value!==collection.id))}/>{collection.name}</label>)}</div></div>
+        <div className="md:col-span-2 rounded-2xl border p-5"><span className="label">Personalisation</span><div className="mt-3 grid gap-3 md:grid-cols-3">{[["isPersonalised","This is a personalised product"],["photoRequired","Customer photo required"],["instructionsRequired","Customer instructions required"],["startingPrice","Display as starting price"]].map(([key,label])=><label className="flex items-center gap-2 text-sm" key={key}><input type="checkbox" checked={Boolean(personal[key as keyof typeof personal])} onChange={event=>setPersonal(current=>({...current,[key]:event.target.checked}))}/>{label}</label>)}</div>{personal.isPersonalised&&<div className="mt-5 grid gap-4 md:grid-cols-3"><label><span className="label">Maximum people</span><input className="field" type="number" value={personal.maxPeople} onChange={event=>setPersonal({...personal,maxPeople:event.target.value})}/></label><label><span className="label">Maximum pets</span><input className="field" type="number" value={personal.maxPets} onChange={event=>setPersonal({...personal,maxPets:event.target.value})}/></label><label><span className="label">Photos required</span><input className="field" type="number" value={personal.photosRequired} onChange={event=>setPersonal({...personal,photosRequired:event.target.value})}/></label><label><span className="label">Available sizes (comma separated)</span><input className="field" value={personal.sizes} onChange={event=>setPersonal({...personal,sizes:event.target.value})}/></label><label><span className="label">Available variants (comma separated)</span><input className="field" value={personal.variants} onChange={event=>setPersonal({...personal,variants:event.target.value})}/></label><label className="md:col-span-3"><span className="label">Personalisation instructions</span><textarea className="field min-h-24" value={personal.instructions} onChange={event=>setPersonal({...personal,instructions:event.target.value})}/></label></div>}</div>
         <div className="md:col-span-2">
           <div className="flex items-end justify-between gap-4">
             <div>

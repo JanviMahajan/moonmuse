@@ -26,10 +26,15 @@ import { MiniatureSticker } from "./components/MiniatureSticker";
 import { DesignRequestFlow } from "./components/DesignRequestFlow";
 import { OwnerDesignRequests } from "./components/OwnerDesignRequests";
 import { ProductDetails, ShopCatalogue } from "./components/ShopExperience";
-import { CartPage, CheckoutPage, OrderConfirmation } from "./components/CartCheckout";
+import {
+  CartPage,
+  CheckoutPage,
+  OrderConfirmation,
+} from "./components/CartCheckout";
 import { FrameTemplateCustomizer } from "./components/FrameTemplateCustomizer";
 import { ResetPasswordPage } from "./components/ResetPasswordPage";
 import { TrackOrderPage } from "./components/TrackOrderPage";
+import { PersonalisedGiftsPage } from "./components/PersonalisedGifts";
 import {
   frameSizes,
   getPricing,
@@ -66,8 +71,8 @@ function Home() {
           </h1>
           <p className="mt-8 max-w-lg text-lg text-cream/75">
             Discover handmade art, personalised keepsakes and editable
-            memory-frame templates created to hold the moments you never want
-            to forget.
+            memory-frame templates created to hold the moments you never want to
+            forget.
           </p>
           <div className="mt-10 flex flex-wrap gap-3">
             <Link className="btn-light" to="/shop">
@@ -111,18 +116,45 @@ function Home() {
         </Fade>
         <div className="grid gap-5 md:grid-cols-3">
           {[
-            { id: "ashtrays", name: "Handmade Ashtrays", short: "Small sculpted pieces for colourful corners.", image: "/images/moonmuse-studio.png" },
-            { id: "totes", name: "Painted Tote Bags", short: "Original art you can carry everywhere.", image: "/images/tote1.jpg" },
-            { id: "keychains", name: "Handmade Keychains", short: "Tiny keepsakes made with personality.", image: "/images/tote5.jpg" },
-            { id: "paintings", name: "Paintings", short: "One-of-one colour, feeling and brushwork.", image: "/images/tote4.jpg" },
-            { id: "frames", name: "Memory Frames", short: "Layered stories, framed by hand.", image: "/images/frame1.jpg" },
-            { id: "frame-templates", name: "Editable Frame Templates", short: "Janvi’s layouts, personalised with your memories.", image: "/images/frame2.jpg" },
+            {
+              id: "ashtrays",
+              name: "Handmade Ashtrays",
+              short: "Small sculpted pieces for colourful corners.",
+              image: "/images/moonmuse-studio.png",
+            },
+            {
+              id: "totes",
+              name: "Painted Tote Bags",
+              short: "Original art you can carry everywhere.",
+              image: "/images/tote1.jpg",
+            },
+            {
+              id: "keychains",
+              name: "Handmade Keychains",
+              short: "Tiny keepsakes made with personality.",
+              image: "/images/tote5.jpg",
+            },
+            {
+              id: "paintings",
+              name: "Paintings",
+              short: "One-of-one colour, feeling and brushwork.",
+              image: "/images/tote4.jpg",
+            },
+            {
+              id: "frames",
+              name: "Memory Frames",
+              short: "Layered stories, framed by hand.",
+              image: "/images/frame1.jpg",
+            },
+            {
+              id: "frame-templates",
+              name: "Editable Frame Templates",
+              short: "Janvi’s layouts, personalised with your memories.",
+              image: "/images/frame2.jpg",
+            },
           ].map((p) => (
             <Fade key={p.id}>
-              <Link
-                to={`/shop?category=${p.id}`}
-                className="card group block"
-              >
+              <Link to={`/shop?category=${p.id}`} className="card group block">
                 <div className="h-80 overflow-hidden">
                   <img
                     src={p.image}
@@ -143,6 +175,19 @@ function Home() {
             </Fade>
           ))}
         </div>
+      </section>
+      <section className="section pt-0">
+        <Fade>
+          <div className="card grid overflow-hidden lg:grid-cols-[.9fr_1.1fr]">
+            <div className="flex flex-col justify-center p-8 md:p-12">
+              <p className="label">Personalised gifts</p>
+              <h2 className="mt-3 text-5xl md:text-6xl">Made from your memories.</h2>
+              <p className="mt-5 text-ink/65">Your favourite photographs, reimagined as custom canvas paintings, character keychains and keepsakes made especially for gifting.</p>
+              <div className="mt-7 flex flex-wrap gap-3"><Link className="btn" to="/personalised-gifts">Explore Personalised Gifts</Link><Link className="tag" to="/personalised-gifts#personalised-collection">Start a Custom Order</Link></div>
+            </div>
+            <img src="/images/personalised-gifts-canvas-keychains.png" className="h-full max-h-[520px] w-full object-cover" alt="Personalised couple canvas portrait with matching character keychains"/>
+          </div>
+        </Fade>
       </section>
       <section className="bg-blush/15">
         <div className="section">
@@ -206,7 +251,9 @@ function Home() {
           <div className="noise mx-auto max-w-7xl rounded-[2rem] px-7 py-12 text-cream md:px-12 md:py-14">
             <div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
               <div className="max-w-2xl">
-                <p className="hand text-2xl text-blush">your idea, made tangible</p>
+                <p className="hand text-2xl text-blush">
+                  your idea, made tangible
+                </p>
                 <h2 className="mt-2 text-5xl md:text-6xl">
                   Have something else in mind?
                 </h2>
@@ -1154,7 +1201,10 @@ function Shop() {
 export default function App() {
   return (
     <Routes>
-      <Route path="/reset-password" element={<Navigate to="/admin/reset-password" replace />} />
+      <Route
+        path="/reset-password"
+        element={<Navigate to="/admin/reset-password" replace />}
+      />
       <Route path="/admin/reset-password" element={<ResetPasswordPage />} />
       <Route path="/admin/*" element={<Admin />} />
       <Route
@@ -1164,8 +1214,12 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/shop" element={<Shop />} />
+              <Route path="/personalised-gifts" element={<PersonalisedGiftsPage />} />
               <Route path="/shop/:slug" element={<ProductDetails />} />
-              <Route path="/templates/:slug/options" element={<FrameTemplateCustomizer />} />
+              <Route
+                path="/templates/:slug/options"
+                element={<FrameTemplateCustomizer />}
+              />
               <Route path="/cart" element={<CartPage />} />
               <Route path="/login" element={<Navigate to="/" replace />} />
               <Route path="/signup" element={<Navigate to="/" replace />} />
@@ -1173,10 +1227,16 @@ export default function App() {
               <Route path="/account" element={<Navigate to="/" replace />} />
               <Route path="/profile" element={<Navigate to="/" replace />} />
               <Route path="/checkout" element={<CheckoutPage />} />
-              <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
+              <Route
+                path="/order-confirmation/:orderId"
+                element={<OrderConfirmation />}
+              />
               <Route path="/studio" element={<Navigate to="/shop" replace />} />
               <Route path="/create/frame/size" element={<FrameSizePage />} />
-              <Route path="/create/wallpaper/*" element={<Navigate to="/shop" replace />} />
+              <Route
+                path="/create/wallpaper/*"
+                element={<Navigate to="/shop" replace />}
+              />
               <Route
                 path="/create/:product/editor"
                 element={<StudioEditor />}

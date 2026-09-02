@@ -1,12 +1,13 @@
 export type ShopCategory = "ashtrays" | "totes" | "keychains" | "paintings" | "frames" | "frame-templates";
 export type ProductMedia = { id: string; type: "image" | "video" | "external_video"; url: string; thumbnailUrl?: string; posterUrl?: string; alt: string; caption: string; isPrimary: boolean };
+export type PersonalisationOptions = { isPersonalised:boolean;photoRequired:boolean;instructionsRequired:boolean;startingPrice:boolean;maxPeople:number|null;maxPets:number|null;photosRequired:number|null;sizes:string[];variants:string[];instructions:string };
 export type ShopProduct = {
   id: string; slug: string; title: string; category: ShopCategory; price: number;
   availability: "In Stock" | "Made to Order" | "Sold Out" | "Hidden";
   badge: "Handmade" | "Made to Order" | "Editable Template";
   description: string; story: string; materials: string; dimensions: string;
   care: string; processingTime: string; images: string[]; featured: boolean;
-  stock: number | null; createdAt: string; photoSlots?: number; media?: ProductMedia[];
+  stock: number | null; createdAt: string; photoSlots?: number; media?: ProductMedia[]; collections?:string[]; personalisation?:PersonalisationOptions;
 };
 export type CartItem = { id: string; productId: string; quantity: number; unitPrice: number; title: string; image: string; options?: Record<string,string>; preview?: string };
 export const productStoreKey = "moonmuse-shop-products";
@@ -24,7 +25,7 @@ export async function fetchPublishedProducts(): Promise<ShopProduct[]> {
   if (!supabase) return seedProducts;
   const client = supabase;
   const { data, error } = await client.from("products")
-    .select("id,slug,name,description,price_inr,sale_price_inr,availability,product_story,materials,dimensions,care_instructions,processing_time,is_featured,created_at,categories(slug),product_media(id,media_type,storage_path,external_url,thumbnail_path,poster_path,alt_text,caption,display_order,is_primary)")
+    .select("id,slug,name,description,price_inr,sale_price_inr,availability,product_story,materials,dimensions,care_instructions,processing_time,is_featured,created_at,categories(slug),product_media(id,media_type,storage_path,external_url,thumbnail_path,poster_path,alt_text,caption,display_order,is_primary),product_collections(collections(slug)),product_personalisation_options(*)")
     .eq("is_active", true)
     .order("created_at", { ascending: false });
   if (error) {
@@ -58,6 +59,8 @@ export async function fetchPublishedProducts(): Promise<ShopProduct[]> {
       featured: Boolean(row.is_featured),
       stock: null,
       createdAt: row.created_at,
+      collections:(row.product_collections||[]).map((entry:any)=>entry.collections?.slug).filter(Boolean),
+      personalisation:row.product_personalisation_options?{isPersonalised:row.product_personalisation_options.is_personalised,photoRequired:row.product_personalisation_options.customer_photo_required,instructionsRequired:row.product_personalisation_options.customer_instructions_required,startingPrice:row.product_personalisation_options.starting_price,maxPeople:row.product_personalisation_options.max_people,maxPets:row.product_personalisation_options.max_pets,photosRequired:row.product_personalisation_options.photos_required,sizes:row.product_personalisation_options.available_sizes||[],variants:row.product_personalisation_options.available_variants||[],instructions:row.product_personalisation_options.instructions||""}:undefined,
     };
   }).filter(Boolean) as ShopProduct[];
   const databaseSlugs = new Set(databaseProducts.map((product) => product.slug));
