@@ -90,7 +90,7 @@ export function ShopCatalogue() {
             Loading the collection…
           </div>
         ) : shown.length ? (
-          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mx-auto grid max-w-[1160px] gap-5 md:grid-cols-2 lg:grid-cols-3 lg:gap-6">
             {shown.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}
@@ -107,15 +107,18 @@ export function ShopCatalogue() {
 function ProductCard({ product: p }: { product: ShopProduct }) {
   const template = p.category === "frame-templates";
   return (
-    <article className="card overflow-hidden">
-      <Link to={`/shop/${p.slug}`}>
+    <article className="card flex h-full min-w-0 flex-col overflow-hidden">
+      <Link
+        className="block aspect-[4/3] overflow-hidden bg-cream"
+        to={`/shop/${p.slug}`}
+      >
         <img
           src={p.images[0]}
-          className="h-72 w-full object-cover"
+          className="h-full w-full object-contain object-center"
           alt={p.title}
         />
       </Link>
-      <div className="p-6">
+      <div className="flex flex-1 flex-col p-5">
         <div className="flex flex-wrap justify-between gap-2">
           <span className="label">
             {categories.find(([, id]) => id === p.category)?.[0]}
@@ -124,14 +127,16 @@ function ProductCard({ product: p }: { product: ShopProduct }) {
             {p.badge}
           </span>
         </div>
-        <h2 className="mt-2 text-3xl">{p.title}</h2>
-        <p className="mt-2 text-sm text-ink/60">{p.description}</p>
+        <h2 className="mt-2 text-2xl">{p.title}</h2>
+        <p className="mt-2 line-clamp-2 text-sm leading-5 text-ink/60">
+          {p.description}
+        </p>
         {template && (
           <p className="mt-3 text-xs font-semibold">
             {p.photoSlots} editable photo slots
           </p>
         )}
-        <div className="mt-6 flex items-center justify-between">
+        <div className="mt-auto flex items-center justify-between gap-3 pt-5">
           <div>
             <b>
               {template ? "From " : ""}
